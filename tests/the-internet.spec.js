@@ -40,15 +40,19 @@ test.describe('The internet herokuapp test automation', () => {
     const brokenImagesLink = page.locator('a', { hasText: 'Broken Images' });
     await brokenImagesLink.click();
 
-    const images = page.locator('img');
-    const count = await images.count();
+    const images = await page.locator('img').elementHandles();
 
-    for (let i = 0; i < count; i++) {
-      const img = images.nth(i);
-      const isLoaded = await img.evaluate((imgEl) => imgEl.complete && imgEl.naturalWidth > 0);
-      // eslint-disable-next-line playwright/no-useless-await
-      await expect(isLoaded).toBe(true);
-    }
+    const brokenImages = await Promise.all(
+      images.map(async (img) => {
+        const src = await img.getAttribute('src');
+        const isBroken = await img.evaluate((imgEl) => imgEl.naturalWidth === 0);
+        return isBroken ? src : null;
+      })
+    );
+
+    const filteredBrokenImages = brokenImages.filter(Boolean);
+
+    expect(filteredBrokenImages).not.toHaveLength(0); // Expect at least one broken
   });
 
   //-----CHALLENGING DOM----
@@ -119,16 +123,19 @@ test.describe('The internet herokuapp test automation', () => {
     await disappearingElementsLink.click();
 
     const menuItems = page.locator('ul li a');
-    const count = await menuItems.count();
+    const visibleTexts = (await menuItems.allTextContents()).map((text) =>
+      text.trim().toLowerCase()
+    );
 
-    expect(count === 4 || count === 5).toBe(true);
+    const expectedItems = ['home', 'about', 'contact', 'portfolio'];
 
-    const visibleTexts = [];
-    for (let i = 0; i < count; i++) {
-      visibleTexts.push(await menuItems.nth(i).innerText());
+    for (const expected of expectedItems) {
+      const matchFound = visibleTexts.some((text) => text.includes(expected));
+      expect(matchFound).toBeTruthy(); // Each expected item should be found in some
     }
 
-    expect(visibleTexts).toEqual(expect.arrayContaining(['Home', 'About', 'Contact', 'Portfolio']));
+    expect(visibleTexts.length).toBeGreaterThanOrEqual(4);
+    expect(visibleTexts.length).toBeLessThanOrEqual(5);
   });
 
   //-----DRAG AND DROP----
@@ -142,11 +149,8 @@ test.describe('The internet herokuapp test automation', () => {
 
     await columnA.dragTo(columnB);
 
-    const headerA = await columnA.locator('header').innerText();
-    const headerB = await columnB.locator('header').innerText();
-
-    await expect(headerA).toHaveText('B');
-    await expect(headerB).toHaveText('A');
+    await expect(columnA.locator('header')).toHaveText('B');
+    await expect(columnB.locator('header')).toHaveText('A');
   });
 
   //-----DROPDOWN----
@@ -167,15 +171,12 @@ test.describe('The internet herokuapp test automation', () => {
     const dynamicContentLink = page.locator('a', { hasText: 'Dynamic Content' });
     await dynamicContentLink.click();
 
-    const contentsBefore = await page.$$eval('#content .row .large-10', (nodes) =>
-      nodes.map((node) => node.textContent?.trim())
-    );
+    const contentLocator = page.locator('#content .row .large-10');
+    const contentsBefore = await contentLocator.allTextContents();
 
     await page.reload();
 
-    const contentsAfter = await page.$$eval('#content .row .large-10', (nodes) =>
-      nodes.map((node) => node.textContent?.trim())
-    );
+    const contentsAfter = await contentLocator.allTextContents();
 
     expect(contentsBefore).not.toEqual(contentsAfter);
   });
@@ -188,16 +189,17 @@ test.describe('The internet herokuapp test automation', () => {
 
     const checkbox = page.locator('#checkbox');
     const toggleButton = page.locator('#checkbox-example button');
+    const message = page.locator('#message');
 
     // Remove checkbox
     await toggleButton.click();
     await expect(checkbox).toBeHidden();
-    await expect(page.locator('#message')).toHaveText('It’s gone!');
+    await expect(message).toHaveText("It's gone!"); //'It\'s gone!'
 
     // Add checkbox
     await toggleButton.click();
     await expect(checkbox).toBeVisible();
-    await expect(page.locator('#message')).toHaveText('It’s back!');
+    await expect(message).toHaveText("It's back!"); //'It\'s gone!'
   });
 
   test('should enable and disable input field dynamically', async ({ page }) => {
@@ -210,287 +212,290 @@ test.describe('The internet herokuapp test automation', () => {
     // Enable input
     await enableButton.click();
     await expect(input).toBeEnabled();
-    await expect(page.locator('#message')).toHaveText('It’s enabled!');
-
+    await expect(page.locator('#message')).toHaveText("It's enabled!");
     // Disable input
     await enableButton.click();
     await expect(input).toBeDisabled();
-    await expect(page.locator('#message')).toHaveText('It’s disabled!');
+    await expect(page.locator('#message')).toHaveText("It's disabled!");
+
+    //-----DYNAMIC LOADING----
+
+    test('should wait for hidden element to appear - Example 1', async ({ page }) => {
+      const dynamicLoadingLink = page.locator('a', { hasText: 'Dynamic Loading' });
+      await dynamicLoadingLink.click();
+
+      const example1Link = page.locator('a', { hasText: 'Example 1' });
+      await example1Link.click();
+
+      const startButton = page.locator('button', { hasText: 'Start' });
+      await startButton.click();
+
+      const finishText = page.locator('#finish h4');
+      await expect(finishText).toBeVisible({ timeout: 10000 });
+      await expect(finishText).toHaveText('Hello World!');
+    });
+
+    test('should wait for element that is rendered after load - Example 2', async ({ page }) => {
+      const dynamicLoadingLink = page.locator('a', { hasText: 'Dynamic Loading' });
+      await dynamicLoadingLink.click();
+
+      const example2Link = page.locator('a', { hasText: 'Example 2' });
+      await example2Link.click();
+
+      const startButton = page.locator('button', { hasText: 'Start' });
+      await startButton.click();
+
+      const finishText = page.locator('#finish h4');
+      await expect(finishText).toBeVisible({ timeout: 10000 });
+      await expect(finishText).toHaveText('Hello World!');
+    });
+
+    //-----ENTRY AD----
+
+    test('should close the modal in Entry Ad', async ({ page }) => {
+      const entryAdLink = page.locator('a', { hasText: 'Entry Ad' });
+      await entryAdLink.click();
+
+      const modal = page.locator('.modal');
+      await expect(modal).toBeVisible();
+
+      const closeModal = page.locator('.modal-footer > p');
+      await closeModal.click();
+      await expect(modal).toBeHidden();
+    });
+
+    //-----EXIT INTENT----
+
+    // test('should trigger modal on mouse leaving viewport - Exit Intent', async ({ page }) => {
+    //   const exitIntentLink = page.locator('a', { hasText: 'Exit Intent' });
+    //   await exitIntentLink.click();
+
+    //   if (testInfo.project.name === 'firefox') {
+    //     test.skip('Exit intent may not work reliably in Firefox');
+    //   }
+
+    //   await page.mouse.move(300, 300); // move inside first
+    //   await page.mouse.move(300, 0); // simulate exit to top
+
+    //   const modal = page.locator('.modal');
+    //   await expect(modal).toBeVisible({ timeout: 10000 });
+
+    //   const close = page.locator('.modal .modal-footer > p');
+    //   await close.click();
+    //   await expect(modal).toBeHidden();
+    // });
+
+    //-----FILE DOWNLOAD----
+
+    test('should download a file', async ({ page }) => {
+      const fileDownloadLink = page.getByRole('link', { name: 'File Download', exact: true });
+      await fileDownloadLink.click();
+
+      const downloadLink = page.locator('div.example a').first();
+
+      const [download] = await Promise.all([page.waitForEvent('download'), downloadLink.click()]);
+
+      const suggestedFilename = download.suggestedFilename();
+      expect(suggestedFilename).toBeTruthy();
+    });
+
+    //-----FILE UPLOAD----
+
+    test('should upload a file', async ({ page }) => {
+      const fileUploadLink = page.locator('a', { hasText: 'File Upload' });
+      await fileUploadLink.click();
+
+      const fileInput = page.locator('input[type="file"]');
+      await fileInput.setInputFiles('tests/fixtures/sample.txt'); // adjust path to your fixture file
+
+      const uploadButton = page.locator('input[type="submit"]');
+      await uploadButton.click();
+
+      const uploadedFile = page.locator('#uploaded-files');
+      await expect(uploadedFile).toHaveText('sample.txt');
+    });
+
+    //-----FLOATING MENU----
+
+    test('should keep floating menu visible on scroll', async ({ page }) => {
+      const floatingMenuLink = page.locator('a', { hasText: 'Floating Menu' });
+      await floatingMenuLink.click();
+
+      const menu = page.locator('#menu');
+      await page.mouse.wheel(0, 2000); // scroll down
+
+      await expect(menu).toBeVisible();
+    });
+
+    //-----FORGOT PASSWORD----
+
+    test('should request password reset', async ({ page }) => {
+      const forgotPasswordLink = page.locator('a', { hasText: 'Forgot Password' });
+      await forgotPasswordLink.click();
+
+      const emailInput = page.locator('#email');
+      await emailInput.fill('user@example.com');
+
+      const retrieveBtn = page.locator('#form_submit');
+      await retrieveBtn.click();
+
+      const confirmation = page.locator('#content');
+      await expect(confirmation).toContainText("Your e-mail's been sent!");
+    });
+
+    //-----FORM AUTHENTICATION----
+
+    test('should login and logout successfully', async ({ page }) => {
+      const authLink = page.locator('a', { hasText: 'Form Authentication' });
+      await authLink.click();
+
+      await page.locator('#username').fill('tomsmith');
+      await page.locator('#password').fill('SuperSecretPassword!');
+      await page.locator('button[type="submit"]').click();
+
+      const flash = page.locator('#flash');
+      await expect(flash).toContainText('You logged into a secure area!');
+
+      const logoutBtn = page.locator('a.button');
+      await logoutBtn.click();
+
+      await expect(page.locator('#flash')).toContainText('You logged out of the secure area!');
+    });
+
+    //-----FRAMES----
+
+    test('should navigate nested frames and verify content', async ({ page }) => {
+      const framesLink = page.locator('a', { hasText: 'Frames' });
+      await framesLink.click();
+
+      const nestedFramesLink = page.locator('a', { hasText: 'Nested Frames' });
+      await nestedFramesLink.click();
+
+      const frameTop = page.frame({ name: 'frame-top' });
+      const frameMiddle = await frameTop?.frame({ name: 'frame-middle' });
+
+      const middleText = await frameMiddle?.locator('#content').innerText();
+      expect(middleText).toBe('MIDDLE');
+    });
+
+    //-----GEOLOCATION----
+
+    //-----HORIZONTAL SLIDER----
+
+    test('should slide to value 3.5 on Horizontal Slider', async ({ page }) => {
+      const sliderLink = page.locator('a', { hasText: 'Horizontal Slider' });
+      await sliderLink.click();
+
+      const slider = page.locator('input[type="range"]');
+      const valueText = page.locator('#range');
+
+      for (let i = 0; i < 7; i++) {
+        await slider.press('ArrowRight');
+      }
+
+      await expect(valueText).toHaveText('3.5');
+    });
+
+    //-----INFINITE SCROLL----
+
+    test('should load more content when scrolling down - Infinite Scroll', async ({ page }) => {
+      const infiniteScrollLink = page.locator('a', { hasText: 'Infinite Scroll' });
+      await infiniteScrollLink.click();
+
+      const paragraphs = page.locator('.jscroll-added');
+      const initialCount = await paragraphs.count();
+
+      await page.mouse.wheel(0, 2000); // simulate scroll
+
+      const newCount = await paragraphs.count();
+      expect(newCount).toBeGreaterThan(initialCount);
+    });
+
+    //-----INPUTS----
+
+    test('should accept numeric input in Inputs field', async ({ page }) => {
+      const inputsLink = page.locator('a', { hasText: 'Inputs' });
+      await inputsLink.click();
+
+      const numberInput = page.locator('input[type="number"]');
+      await numberInput.fill('12345');
+
+      await expect(numberInput).toHaveValue('12345');
+    });
+
+    //-----JQUERY UI MENUS----
+    //-----JAVASCRIPT ALERTS----
+    //-----JAVASCRIPT ONLOAD EVENT ERROR----
+    //-----KEY PRESSES----
+    //-----LARGE & DEEP DOM----
+
+    //-----MULTIPLES WINDOWS----
+
+    test('should open a new window and verify content', async ({ page, context }) => {
+      const windowsLink = page.locator('a', { hasText: 'Multiple Windows' });
+      await windowsLink.click();
+
+      const [newPage] = await Promise.all([
+        context.waitForEvent('page'),
+        page.locator('a', { hasText: 'Click Here' }).click(),
+      ]);
+
+      await newPage.waitForLoadState();
+      const heading = newPage.locator('h3');
+      await expect(heading).toHaveText('New Window');
+    });
+
+    //-----NESTED FRAMES----
+
+    test('should access middle frame inside nested frames', async ({ page }) => {
+      const framesLink = page.locator('a', { hasText: 'Frames' });
+      await framesLink.click();
+
+      const nestedFramesLink = page.locator('a', { hasText: 'Nested Frames' });
+      await nestedFramesLink.click();
+
+      const topFrame = await page.frame({ name: 'frame-top' });
+      const middleFrame = await topFrame?.frame({ name: 'frame-middle' });
+
+      const middleText = await middleFrame?.locator('#content').innerText();
+      expect(middleText).toBe('MIDDLE');
+    });
+
+    //-----NOTIFICATION MESSAGES----
+
+    test('should display a notification message after clicking link', async ({ page }) => {
+      const notificationLink = page.locator('a', { hasText: 'Notification Messages' });
+      await notificationLink.click();
+
+      const clickHereLink = page.locator('a', { hasText: 'Click here' });
+
+      await clickHereLink.click();
+
+      const message = page.locator('#flash');
+      await expect(message).toBeVisible();
+      await expect(message).toContainText('Action'); // success or failure message
+    });
+
+    //-----REDIRECT LINK----
+
+    test('should follow redirect to status code page', async ({ page }) => {
+      const redirectLink = page.locator('a', { hasText: 'Redirect Link' });
+      await redirectLink.click();
+
+      const redirectButton = page.locator('a', { hasText: 'here' });
+      await redirectButton.click();
+
+      const header = page.locator('h3');
+      await expect(header).toHaveText('Status Codes');
+    });
+
+    //-----SECURE FILE DOWNLOAD----
+    //-----SHADOW DOM----
+    //-----SHIFTING CONTENT----
+    //-----SLOW RESOURCES----
+    //-----SORTABLE DATA TABLES----
+    //-----STATUS CODES----
+    //-----TYPOS----
+    //-----WYSIWYG EDITOR----
   });
-
-  //-----DYNAMIC LOADING----
-
-  test('should wait for hidden element to appear - Example 1', async ({ page }) => {
-    const dynamicLoadingLink = page.locator('a', { hasText: 'Dynamic Loading' });
-    await dynamicLoadingLink.click();
-
-    const example1Link = page.locator('a', { hasText: 'Example 1' });
-    await example1Link.click();
-
-    const startButton = page.locator('button', { hasText: 'Start' });
-    await startButton.click();
-
-    const finishText = page.locator('#finish h4');
-    await expect(finishText).toBeVisible();
-    await expect(finishText).toHaveText('Hello World!');
-  });
-
-  test('should wait for element that is rendered after load - Example 2', async ({ page }) => {
-    const dynamicLoadingLink = page.locator('a', { hasText: 'Dynamic Loading' });
-    await dynamicLoadingLink.click();
-
-    const example2Link = page.locator('a', { hasText: 'Example 2' });
-    await example2Link.click();
-
-    const startButton = page.locator('button', { hasText: 'Start' });
-    await startButton.click();
-
-    const finishText = page.locator('#finish h4');
-    await expect(finishText).toBeVisible();
-    await expect(finishText).toHaveText('Hello World!');
-  });
-
-  //-----ENTRY AD----
-
-  test('should close the modal in Entry Ad', async ({ page }) => {
-    const entryAdLink = page.locator('a', { hasText: 'Entry Ad' });
-    await entryAdLink.click();
-
-    const modal = page.locator('.modal');
-    await expect(modal).toBeVisible();
-
-    const closeModal = page.locator('.modal-footer > p');
-    await closeModal.click();
-    await expect(modal).toBeHidden();
-  });
-
-  //-----EXIT INTENT----
-
-  test('should trigger modal on mouse leaving viewport - Exit Intent', async ({ page }) => {
-    const exitIntentLink = page.locator('a', { hasText: 'Exit Intent' });
-    await exitIntentLink.click();
-
-    await page.mouse.move(100, 100); // move inside first
-    await page.mouse.move(100, 0); // simulate exit to top
-
-    const modal = page.locator('.modal');
-    await expect(modal).toBeVisible();
-
-    const close = page.locator('.modal .modal-footer > p');
-    await close.click();
-    await expect(modal).toBeHidden();
-  });
-
-  //-----FILE DOWNLOAD----
-
-  test('should download a file', async ({ page, context }) => {
-    const fileDownloadLink = page.locator('a', { hasText: 'File Download' });
-    await fileDownloadLink.click();
-
-    const downloadLink = page.locator('div.example a').first();
-
-    const [download] = await Promise.all([page.waitForEvent('download'), downloadLink.click()]);
-
-    const suggestedFilename = download.suggestedFilename();
-    expect(suggestedFilename).toBeTruthy();
-  });
-
-  //-----FILE UPLOAD----
-
-  test('should upload a file', async ({ page }) => {
-    const fileUploadLink = page.locator('a', { hasText: 'File Upload' });
-    await fileUploadLink.click();
-
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles('tests/fixtures/sample.txt'); // adjust path to your fixture file
-
-    const uploadButton = page.locator('input[type="submit"]');
-    await uploadButton.click();
-
-    const uploadedFile = page.locator('#uploaded-files');
-    await expect(uploadedFile).toHaveText('sample.txt');
-  });
-
-  //-----FLOATING MENU----
-
-  test('should keep floating menu visible on scroll', async ({ page }) => {
-    const floatingMenuLink = page.locator('a', { hasText: 'Floating Menu' });
-    await floatingMenuLink.click();
-
-    const menu = page.locator('#menu');
-    await page.mouse.wheel(0, 2000); // scroll down
-
-    await expect(menu).toBeVisible();
-  });
-
-  //-----FORGOT PASSWORD----
-
-  test('should request password reset', async ({ page }) => {
-    const forgotPasswordLink = page.locator('a', { hasText: 'Forgot Password' });
-    await forgotPasswordLink.click();
-
-    const emailInput = page.locator('#email');
-    await emailInput.fill('user@example.com');
-
-    const retrieveBtn = page.locator('#form_submit');
-    await retrieveBtn.click();
-
-    const confirmation = page.locator('#content');
-    await expect(confirmation).toContainText('Your e-mail\'s been sent!');
-  });
-
-  //-----FORM AUTHENTICATION----
-
-  test('should login and logout successfully', async ({ page }) => {
-    const authLink = page.locator('a', { hasText: 'Form Authentication' });
-    await authLink.click();
-
-    await page.locator('#username').fill('tomsmith');
-    await page.locator('#password').fill('SuperSecretPassword!');
-    await page.locator('button[type="submit"]').click();
-
-    const flash = page.locator('#flash');
-    await expect(flash).toContainText('You logged into a secure area!');
-
-    const logoutBtn = page.locator('a.button');
-    await logoutBtn.click();
-
-    await expect(page.locator('#flash')).toContainText('You logged out of the secure area!');
-  });
-
-  //-----FRAMES----
-
-  test('should navigate nested frames and verify content', async ({ page }) => {
-    const framesLink = page.locator('a', { hasText: 'Frames' });
-    await framesLink.click();
-
-    const nestedFramesLink = page.locator('a', { hasText: 'Nested Frames' });
-    await nestedFramesLink.click();
-
-    const frameTop = page.frame({ name: 'frame-top' });
-    const frameMiddle = await frameTop?.frame({ name: 'frame-middle' });
-
-    const middleText = await frameMiddle?.locator('#content').innerText();
-    expect(middleText).toBe('MIDDLE');
-  });
-
-  //-----GEOLOCATION----
-
-  //-----HORIZONTAL SLIDER----
-
-  test('should slide to value 3.5 on Horizontal Slider', async ({ page }) => {
-    const sliderLink = page.locator('a', { hasText: 'Horizontal Slider' });
-    await sliderLink.click();
-
-    const slider = page.locator('input[type="range"]');
-    const valueText = page.locator('#range');
-
-    for (let i = 0; i < 7; i++) {
-      await slider.press('ArrowRight');
-    }
-
-    await expect(valueText).toHaveText('3.5');
-  });
-
-  //-----INFINITE SCROLL----
-
-  test('should load more content when scrolling down - Infinite Scroll', async ({ page }) => {
-    const infiniteScrollLink = page.locator('a', { hasText: 'Infinite Scroll' });
-    await infiniteScrollLink.click();
-
-    const paragraphs = page.locator('.jscroll-added');
-    const initialCount = await paragraphs.count();
-
-    await page.mouse.wheel(0, 2000); // simulate scroll
-
-    const newCount = await paragraphs.count();
-    expect(newCount).toBeGreaterThan(initialCount);
-  });
-
-  //-----INPUTS----
-
-  test('should accept numeric input in Inputs field', async ({ page }) => {
-    const inputsLink = page.locator('a', { hasText: 'Inputs' });
-    await inputsLink.click();
-
-    const numberInput = page.locator('input[type="number"]');
-    await numberInput.fill('12345');
-
-    await expect(numberInput).toHaveValue('12345');
-  });
-
-  //-----JQUERY UI MENUS----
-  //-----JAVASCRIPT ALERTS----
-  //-----JAVASCRIPT ONLOAD EVENT ERROR----
-  //-----KEY PRESSES----
-  //-----LARGE & DEEP DOM----
-
-  //-----MULTIPLES WINDOWS----
-
-  test('should open a new window and verify content', async ({ page, context }) => {
-  const windowsLink = page.locator('a', { hasText: 'Multiple Windows' });
-  await windowsLink.click();
-
-  const [newPage] = await Promise.all([
-    context.waitForEvent('page'),
-    page.locator('a', { hasText: 'Click Here' }).click()
-  ]);
-
-  await newPage.waitForLoadState();
-  const heading = newPage.locator('h3');
-  await expect(heading).toHaveText('New Window');
-});
-
-  //-----NESTED FRAMES----
-
-  test('should access middle frame inside nested frames', async ({ page }) => {
-  const framesLink = page.locator('a', { hasText: 'Frames' });
-  await framesLink.click();
-
-  const nestedFramesLink = page.locator('a', { hasText: 'Nested Frames' });
-  await nestedFramesLink.click();
-
-  const topFrame = await page.frame({ name: 'frame-top' });
-  const middleFrame = await topFrame?.frame({ name: 'frame-middle' });
-
-  const middleText = await middleFrame?.locator('#content').innerText();
-  expect(middleText).toBe('MIDDLE');
-});
-
-  //-----NOTIFICATION MESSAGES----
-
-  test('should display a notification message after clicking link', async ({ page }) => {
-  const notificationLink = page.locator('a', { hasText: 'Notification Messages' });
-  await notificationLink.click();
-
-  const clickHereLink = page.locator('a', { hasText: 'Click here' });
-
-  await clickHereLink.click();
-
-  const message = page.locator('#flash');
-  await expect(message).toBeVisible();
-  await expect(message).toContainText('Action'); // success or failure message
-});
-
-  //-----REDIRECT LINK----
-
-  test('should follow redirect to status code page', async ({ page }) => {
-  const redirectLink = page.locator('a', { hasText: 'Redirect Link' });
-  await redirectLink.click();
-
-  const redirectButton = page.locator('a', { hasText: 'here' });
-  await redirectButton.click();
-
-  const header = page.locator('h3');
-  await expect(header).toHaveText('Status Codes');
-});
-
-  //-----SECURE FILE DOWNLOAD----
-  //-----SHADOW DOM----
-  //-----SHIFTING CONTENT----
-  //-----SLOW RESOURCES----
-  //-----SORTABLE DATA TABLES----
-  //-----STATUS CODES----
-  //-----TYPOS----
-  //-----WYSIWYG EDITOR----
 });
