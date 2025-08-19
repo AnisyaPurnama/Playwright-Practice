@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('https://the-internet.herokuapp.com/');
+test.beforeEach(async ({ page, baseURL }) => {
+  await page.goto(baseURL);
 });
 
 //-----ADD/REMOVE ELEMENTS----
