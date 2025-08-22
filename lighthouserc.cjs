@@ -1,7 +1,6 @@
 module.exports = {
   ci: {
     collect: {
-      // Run Lighthouse on your app
       url: ['https://the-internet.herokuapp.com/'],
       numberOfRuns: 3,
     },

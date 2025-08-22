@@ -52,5 +52,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-report
-          path: lhci_reports/
+          path: lhci_reports/*.report.html
           retention-days: 30
