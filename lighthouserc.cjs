@@ -3,6 +3,7 @@ module.exports = {
     collect: {
       url: ['https://the-internet.herokuapp.com/'],
       numberOfRuns: 3,
+      // outputDir: '.lighthouseci', // optional, default is already .lighthouseci
     },
     assert: {
       assertions: {
@@ -12,7 +13,7 @@ module.exports = {
     },
     upload: {
       target: 'filesystem',
-      outputDir: './lhci_reports',
+      outputDir: '.lighthouseci',
       reportFilenamePattern: '%%PATHNAME%%-%%DATETIME%%.report.html',
     },
   },

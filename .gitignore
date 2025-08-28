@@ -8,7 +8,7 @@ node_modules/
 
 # Lighthouse CI reports
 lhci_reports/
-.lighthouseci/
+/.lighthouseci/
 
 # macOS system files
 .DS_Store

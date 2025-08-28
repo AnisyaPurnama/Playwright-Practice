@@ -6,7 +6,8 @@
   "main": "playwright-test.js",
   "scripts": {
     "lint": "eslint . --ext .js,.ts",
-    "lhci": "lhci autorun"
+    "lhci": "lhci collect && lhci assert && lhci upload",
+    "lhci:open": "open .lighthouseci/*.html "
   },
   "keywords": [],
   "author": "",
