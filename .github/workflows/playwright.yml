@@ -48,13 +48,10 @@ jobs:
         run: npm ci
       - name: Run Lighthouse CI
         run: npm run lhci
-      - name: List Lighthouse reports
-        if: always()
-        run: ls -lah lhci_reports
       - name: Upload Lighthouse Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-report
-          path: lhci_reports/
+          path: .lighthouseci/
           retention-days: 30
