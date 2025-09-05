@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('https://www.automationexercise.com/');
@@ -14,6 +16,7 @@ test.beforeEach(async ({ page }) => {
 function getSelectors(page) {
   return {
     menuSignupLogin: page.locator('[href="/login"]'),
+    menuProducts: page.locator('[href="/products"]'),
     nameInputSignUp: page.getByTestId('signup-name'),
     emailInputSignUp: page.getByTestId('signup-email'),
     signUpButtons: page.getByTestId('signup-button'),
@@ -145,11 +148,13 @@ test.describe('Clothing webshop test automation', () => {
 
   test('should successfully submit contact us form', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const menuContactUs = page.locator('[href="/contact us"]');
+    const menuContactUs = page.locator('[href="/contact_us"]');
     const nameField = page.getByTestId('name');
     const emailField = page.getByTestId('email');
     const subjectField = page.getByTestId('subject');
     const messageField = page.getByTestId('message');
+    const uploadFileBtn = page.locator('input[name="upload_file"]');
+    const submitBtn = page.getByTestId('submit-button');
 
     //-----ACTION-----
     await menuContactUs.click();
@@ -158,7 +163,45 @@ test.describe('Clothing webshop test automation', () => {
     await subjectField.fill('Refund');
     await messageField.fill('Dear, still looking forward for the refund for purchased number 888');
 
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    const filePath = path.resolve(__dirname, 'files/InvoiceSimple.pdf');
+    await uploadFileBtn.setInputFiles(filePath);
+
+    //Browser dialog prompt
+    page.on('dialog', async (dialog) => {
+      console.log(`Dialog message: ${dialog.message()}`);
+      await dialog.accept(); // or dialog.dismiss()
+    });
+    await submitBtn.click();
+
     //----VALIDATION----
-    await expect(menuContactUs).toBeVisible();
+    await expect(page.locator('.status.alert.alert-success')).toContainText(
+      'submitted successfully'
+    );
+  });
+
+  test('product details should be visible', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts } = getSelectors(page);
+    const firstViewProductBtn = page.locator('[href="/product_details/1"]');
+    const productDetailsElements = [
+      { name: 'productName', locator: page.locator('.google-anno-t') },
+      { name: 'category', locator: page.locator('p', { hasText: 'Category' }) },
+      { name: 'Price', locator: page.locator('span span').first() },
+      { name: 'Availability', locator: page.locator('p', { hasText: 'Availability:' }) },
+      { name: 'Condition', locator: page.locator('p', { hasText: 'Condition:' }) },
+      { name: 'Brand', locator: page.locator('p', { hasText: 'Brand:' }) },
+    ];
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.click();
+
+    //----VALIDATION----
+    for (const { name, locator } of productDetailsElements) {
+      await expect(locator, `${name} should be visible`).toBeVisible();
+    }
   });
 });
