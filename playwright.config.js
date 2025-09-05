@@ -26,6 +26,7 @@ export default defineConfig({
   reporter: 'html',
   use: {
     trace: 'on-first-retry',
+    testIdAttribute: 'data-qa',
   },
 
   projects: [
@@ -38,14 +39,13 @@ export default defineConfig({
         baseURL: 'https://the-internet.herokuapp.com/',
       },
     },
-    {
-      name: 'UI - WebKit',
-      testDir: 'tests/ui',
-      use: {
-        ...devices['Desktop Safari'],
-        baseURL: 'https://the-internet.herokuapp.com/',
-      },
-    },
+    // {
+    //   name: 'UI - WebKit',
+    //   testDir: 'tests/ui',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //   },
+    // },
 
     // --- API Testing Project ---
     {
@@ -57,4 +57,3 @@ export default defineConfig({
     },
   ],
 });
-
