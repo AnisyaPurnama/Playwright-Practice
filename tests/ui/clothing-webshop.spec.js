@@ -17,13 +17,20 @@ function getSelectors(page) {
   return {
     menuSignupLogin: page.locator('[href="/login"]'),
     menuProducts: page.locator('[href="/products"]'),
+    menuCart: page.getByRole('link', { name: 'Cart' }),
     nameInputSignUp: page.getByTestId('signup-name'),
     emailInputSignUp: page.getByTestId('signup-email'),
     signUpButtons: page.getByTestId('signup-button'),
+    subscriptionContainer: page.locator('div.single-widget'),
+    subscriptionInput: page.locator('#susbscribe_email'),
+    subscribeBtn: page.locator('#subscribe'),
+    subscribeConfirmation: page.locator('#success-subscribe'),
   };
 }
 
 test.describe('Clothing webshop test automation', () => {
+  //FEATURE ===================== SIGN UP
+
   test('should register new user successfully', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuSignupLogin, nameInputSignUp, emailInputSignUp, signUpButtons } =
@@ -91,6 +98,8 @@ test.describe('Clothing webshop test automation', () => {
     await expect(errorMessage).toBeVisible();
   });
 
+  //FEATURE ===================== SIGN IN
+
   test('should successfully login with valid data', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuSignupLogin } = getSelectors(page);
@@ -127,6 +136,8 @@ test.describe('Clothing webshop test automation', () => {
     await expect(errorLoginText).toBeVisible();
   });
 
+  //FEATURE ===================== SIGN OUT
+
   test('should successfully logout', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuSignupLogin } = getSelectors(page);
@@ -145,6 +156,8 @@ test.describe('Clothing webshop test automation', () => {
     //----VALIDATION----
     await expect(emailLoginInput).toBeVisible();
   });
+
+  //FEATURE ===================== CONTACT US
 
   test('should successfully submit contact us form', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
@@ -182,6 +195,8 @@ test.describe('Clothing webshop test automation', () => {
     );
   });
 
+  //FEATURE ===================== PRODUCTS PAGE
+
   test('product details should be visible', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuProducts } = getSelectors(page);
@@ -203,5 +218,92 @@ test.describe('Clothing webshop test automation', () => {
     for (const { name, locator } of productDetailsElements) {
       await expect(locator, `${name} should be visible`).toBeVisible();
     }
+  });
+
+  test('should able to search product', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts } = getSelectors(page);
+    const searchInput = page.locator('#search_product');
+    const searchBtn = page.locator('#submit_search');
+    const productTiles = page.locator('div.product-image-wrapper');
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await searchInput.fill('unicorn patch gown');
+    await searchBtn.click();
+
+    //----VALIDATION----
+    await expect(productTiles).toContainText('Unicorn Patch Gown');
+  });
+
+  //FEATURE ===================== SUBSCRIPTION
+
+  test('should display confirmation after successful subscription registration', async ({
+    page,
+  }) => {
+    //-----ELEMENT SELECTOR-----
+    const { subscriptionContainer, subscriptionInput, subscribeBtn, subscribeConfirmation } =
+      getSelectors(page);
+
+    //-----ACTION-----
+    await subscriptionContainer.scrollIntoViewIfNeeded();
+    await subscriptionInput.fill('dummy@email.com');
+    await subscribeBtn.click();
+
+    //----VALIDATION----
+    await expect(subscribeConfirmation).toBeVisible();
+  });
+
+  test('should display confirmation after successful subscription registration in cart page', async ({
+    page,
+  }) => {
+    //-----ELEMENT SELECTOR-----
+    const {
+      menuCart,
+      subscriptionContainer,
+      subscriptionInput,
+      subscribeBtn,
+      subscribeConfirmation,
+    } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuCart.click();
+    await subscriptionContainer.scrollIntoViewIfNeeded();
+    await subscriptionInput.fill('cartpage@email.com');
+    await subscribeBtn.click();
+
+    //----VALIDATION----
+    await expect(subscribeConfirmation).toBeVisible();
+  });
+
+  //FEATURE ===================== CART PAGE
+  test.only('product should successfully added in cart', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts } = getSelectors(page);
+    const firstViewProductBtn = page.locator('[href="/product_details/1"]');
+    const secondViewProductBtn = page.locator('[href="/product_details/2"]');
+    const firstAddToCartBtn = page.locator('a.add-to-cart[data-product-id="1"]').nth(0);
+    const secondAddToCartBtn = page.locator('a.add-to-cart[data-product-id="2"]').nth(1);
+    const continueShoppingBtn = page.locator('button.btn.btn-success.close-modal.btn-block');
+    const viewCartBtn = page.locator('.modal-body a[href="/view_cart"]');
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.hover();
+    await firstAddToCartBtn.click();
+    await continueShoppingBtn.click();
+    await secondViewProductBtn.hover();
+    await secondAddToCartBtn.click();
+    await viewCartBtn.click();
+
+    //----VALIDATION----
+    //Products are visible in the cart page
+    const productCount = 2;
+    for (let i = 1; i <= productCount; i++) {
+      const productSelector = `#product-${i}`;
+      await expect(page.locator(productSelector)).toBeVisible();
+    }
+
+    //TODO: Verify their prices, quantity and total price
   });
 });
