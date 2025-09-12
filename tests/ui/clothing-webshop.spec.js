@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getSelectors } from '../../helpers/selectors';
+import { registerUser } from '../../helpers/register-user';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('https://www.automationexercise.com/');
@@ -13,73 +15,17 @@ test.beforeEach(async ({ page }) => {
   await expect(cookiesBanner).toHaveCount(0);
 });
 
-function getSelectors(page) {
-  return {
-    menuSignupLogin: page.locator('[href="/login"]'),
-    menuProducts: page.locator('[href="/products"]'),
-    menuCart: page.getByRole('link', { name: 'Cart' }),
-    nameInputSignUp: page.getByTestId('signup-name'),
-    emailInputSignUp: page.getByTestId('signup-email'),
-    signUpButtons: page.getByTestId('signup-button'),
-    subscriptionContainer: page.locator('div.single-widget'),
-    subscriptionInput: page.locator('#susbscribe_email'),
-    subscribeBtn: page.locator('#subscribe'),
-    subscribeConfirmation: page.locator('#success-subscribe'),
-  };
-}
-
 test.describe('Clothing webshop test automation', () => {
   //FEATURE ===================== SIGN UP
 
   test('should register new user successfully', async ({ page }) => {
-    //-----ELEMENT SELECTOR-----
-    const { menuSignupLogin, nameInputSignUp, emailInputSignUp, signUpButtons } =
-      getSelectors(page);
-    const maleRadioBtn = page.locator('#id_gender1');
-    //const femaleRadioBtn = page.locator('#id_gender2');
-    const passwordInputSignUp = page.getByTestId('password');
-    const daysDropdown = page.locator('#days');
-    const monthsDropdown = page.locator('#months');
-    const yearsDropdown = page.locator('#years');
-    const firstNameInput = page.getByTestId('first_name');
-    const lastNameInput = page.getByTestId('last_name');
-    const companyInput = page.getByTestId('company');
-    const addressInput = page.getByTestId('address');
-    const countryDropdown = page.locator('#country');
-    const stateInput = page.getByTestId('state');
-    const cityInput = page.getByTestId('city');
-    const zipcodeInput = page.getByTestId('zipcode');
-    const mobileNumberInput = page.getByTestId('mobile_number');
-    const createAccountBtn = page.getByTestId('create-account');
-    const createdAccountText = page.getByTestId('account-created');
-
-    //-----ACTION-----
-    const randomString = Math.random().toString(36).substring(2, 10);
-    const randomUsername = `user_${randomString}`;
-    const randomEmail = `user_${Math.random().toString(36).substring(2, 10)}@playwright.com`;
-
-    await menuSignupLogin.click();
-    await nameInputSignUp.fill(randomUsername);
-    await emailInputSignUp.fill(randomEmail);
-    await signUpButtons.click();
-    await maleRadioBtn.click();
-    await passwordInputSignUp.fill('password123');
-    await daysDropdown.selectOption('8');
-    await monthsDropdown.selectOption('3');
-    await yearsDropdown.selectOption('1995');
-    await firstNameInput.fill('Johny');
-    await lastNameInput.fill('Depp Singh');
-    await companyInput.fill('Tahi kotok BV');
-    await addressInput.fill('Green forest street 188');
-    await countryDropdown.selectOption('Canada');
-    await stateInput.fill('Baileys');
-    await cityInput.fill('Calgary');
-    await zipcodeInput.fill('T0L 0X0');
-    await mobileNumberInput.fill('+1 587 2345 2345');
-    await createAccountBtn.click();
+    const { username, email } = await registerUser(page);
 
     //----VALIDATION----
+    const { createdAccountText } = getSelectors(page);
     await expect(createdAccountText).toBeVisible();
+
+    console.log(`✅ User created: ${username} (${email})`);
   });
 
   test('should show error when registering with existed email', async ({ page }) => {
@@ -277,7 +223,7 @@ test.describe('Clothing webshop test automation', () => {
   });
 
   //FEATURE ===================== CART PAGE
-  test.only('product should successfully added in cart', async ({ page }) => {
+  test('product should successfully be added in cart', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuProducts } = getSelectors(page);
     const firstViewProductBtn = page.locator('[href="/product_details/1"]');
@@ -304,6 +250,72 @@ test.describe('Clothing webshop test automation', () => {
       await expect(page.locator(productSelector)).toBeVisible();
     }
 
-    //TODO: Verify their prices, quantity and total price
+    // Verify their prices, quantity and total price dynamically
+    const rows = page.locator('table.cart tbody tr');
+    const rowCount = await rows.count();
+
+    for (let i = 0; i < rowCount; i++) {
+      const row = rows.nth(i);
+
+      const priceText = await row.locator('.cart_price p').innerText();
+      const quantityText = await row.locator('.cart_quantity button').innerText();
+      const totalText = await row.locator('.cart_total_price').innerText();
+
+      const price = parseInt(priceText.replace(/[^0-9]/g, ''), 10);
+      const quantity = parseInt(quantityText, 10);
+      const total = parseInt(totalText.replace(/[^0-9]/g, ''), 10);
+
+      console.log(`Row ${i + 1} → price: ${price}, qty: ${quantity}, total: ${total}`);
+
+      expect(total).toBe(price * quantity);
+    }
+  });
+
+  test('product quantity should correctly displayed in cart', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts } = getSelectors(page);
+    const firstViewProductBtn = page.locator('[href="/product_details/1"]');
+    const prdDetailsQuantityInput = page.locator('#quantity');
+    const prdDetailsAddToCartBtn = page.locator('button.btn.btn-default.cart');
+    const viewCartBtn = page.locator('.modal-body a[href="/view_cart"]');
+    const quantityCartValue = page.locator('.cart_quantity button');
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.click();
+    await prdDetailsQuantityInput.fill('4');
+    await prdDetailsAddToCartBtn.click();
+    await viewCartBtn.click();
+
+    //----VALIDATION----
+    await expect(quantityCartValue).toHaveText('4');
+  });
+
+  //FEATURE ===================== PLACE ORDER
+  test('place order: register while checkout', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts, menuSignupLogin } = getSelectors(page);
+    const firstViewProductBtn = page.locator('[href="/product_details/1"]');
+    const firstAddToCartBtn = page.locator('a.add-to-cart[data-product-id="1"]').nth(0);
+    const viewCartBtn = page.locator('.modal-body a[href="/view_cart"]');
+    const proceedToCheckoutBtn = page.locator('btn btn-default check_out');
+    //const accCreatedContinueBtn = page.locator('a.btn.btn-primary');
+    const accCreatedContinueBtn = page.getByTestId('continue-button');
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.click();
+    await firstAddToCartBtn.click();
+    await viewCartBtn.click();
+    await proceedToCheckoutBtn.click();
+    await menuSignupLogin.click();
+    const { username, email } = await registerUser(page);
+
+    console.log(`✅ User created: ${username} (${email})`);
+    await accCreatedContinueBtn.click();
+
+    //TODO: verify logged in as user xx
+
+    //----VALIDATION----
   });
 });
