@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getSelectors, getProductDetailsElements } from '../../helper/selector';
+import { registerUser } from '../../helper/register-user';
+import { enterPaymentDetails } from '../../helper/payment';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('https://www.automationexercise.com/');
@@ -13,66 +16,17 @@ test.beforeEach(async ({ page }) => {
   await expect(cookiesBanner).toHaveCount(0);
 });
 
-function getSelectors(page) {
-  return {
-    menuSignupLogin: page.locator('[href="/login"]'),
-    menuProducts: page.locator('[href="/products"]'),
-    nameInputSignUp: page.getByTestId('signup-name'),
-    emailInputSignUp: page.getByTestId('signup-email'),
-    signUpButtons: page.getByTestId('signup-button'),
-  };
-}
-
 test.describe('Clothing webshop test automation', () => {
+  //FEATURE ===================== SIGN UP
+
   test('should register new user successfully', async ({ page }) => {
-    //-----ELEMENT SELECTOR-----
-    const { menuSignupLogin, nameInputSignUp, emailInputSignUp, signUpButtons } =
-      getSelectors(page);
-    const maleRadioBtn = page.locator('#id_gender1');
-    //const femaleRadioBtn = page.locator('#id_gender2');
-    const passwordInputSignUp = page.getByTestId('password');
-    const daysDropdown = page.locator('#days');
-    const monthsDropdown = page.locator('#months');
-    const yearsDropdown = page.locator('#years');
-    const firstNameInput = page.getByTestId('first_name');
-    const lastNameInput = page.getByTestId('last_name');
-    const companyInput = page.getByTestId('company');
-    const addressInput = page.getByTestId('address');
-    const countryDropdown = page.locator('#country');
-    const stateInput = page.getByTestId('state');
-    const cityInput = page.getByTestId('city');
-    const zipcodeInput = page.getByTestId('zipcode');
-    const mobileNumberInput = page.getByTestId('mobile_number');
-    const createAccountBtn = page.getByTestId('create-account');
-    const createdAccountText = page.getByTestId('account-created');
-
-    //-----ACTION-----
-    const randomString = Math.random().toString(36).substring(2, 10);
-    const randomUsername = `user_${randomString}`;
-    const randomEmail = `user_${Math.random().toString(36).substring(2, 10)}@playwright.com`;
-
-    await menuSignupLogin.click();
-    await nameInputSignUp.fill(randomUsername);
-    await emailInputSignUp.fill(randomEmail);
-    await signUpButtons.click();
-    await maleRadioBtn.click();
-    await passwordInputSignUp.fill('password123');
-    await daysDropdown.selectOption('8');
-    await monthsDropdown.selectOption('3');
-    await yearsDropdown.selectOption('1995');
-    await firstNameInput.fill('Johny');
-    await lastNameInput.fill('Depp Singh');
-    await companyInput.fill('Tahi kotok BV');
-    await addressInput.fill('Green forest street 188');
-    await countryDropdown.selectOption('Canada');
-    await stateInput.fill('Baileys');
-    await cityInput.fill('Calgary');
-    await zipcodeInput.fill('T0L 0X0');
-    await mobileNumberInput.fill('+1 587 2345 2345');
-    await createAccountBtn.click();
+    const { username, email } = await registerUser(page);
 
     //----VALIDATION----
+    const { createdAccountText } = getSelectors(page);
     await expect(createdAccountText).toBeVisible();
+
+    console.log(`✅ User created: ${username} (${email})`);
   });
 
   test('should show error when registering with existed email', async ({ page }) => {
@@ -91,13 +45,12 @@ test.describe('Clothing webshop test automation', () => {
     await expect(errorMessage).toBeVisible();
   });
 
+  //FEATURE ===================== SIGN IN
+
   test('should successfully login with valid data', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const { menuSignupLogin } = getSelectors(page);
-    const emailLoginInput = page.getByTestId('login-email');
-    const passwordLoginInput = page.getByTestId('login-password');
-    const loginBtn = page.getByTestId('login-button');
-    const loggedInText = page.locator('text=Logged in as');
+    const { menuSignupLogin, emailLoginInput, passwordLoginInput, loginBtn, loggedInText } =
+      getSelectors(page);
 
     //-----ACTION-----
     await menuSignupLogin.click();
@@ -109,13 +62,10 @@ test.describe('Clothing webshop test automation', () => {
     await expect(loggedInText).toBeVisible();
   });
 
-  test('should show error when login with incorrest email and password', async ({ page }) => {
+  test('should show error when login with incorrect email and password', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const { menuSignupLogin } = getSelectors(page);
-    const emailLoginInput = page.getByTestId('login-email');
-    const passwordLoginInput = page.getByTestId('login-password');
-    const loginBtn = page.getByTestId('login-button');
-    const errorLoginText = page.locator('text=Your email or password is incorrect!');
+    const { menuSignupLogin, emailLoginInput, passwordLoginInput, loginBtn, errorLoginText } =
+      getSelectors(page);
 
     //-----ACTION-----
     await menuSignupLogin.click();
@@ -127,13 +77,12 @@ test.describe('Clothing webshop test automation', () => {
     await expect(errorLoginText).toBeVisible();
   });
 
+  //FEATURE ===================== SIGN OUT
+
   test('should successfully logout', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const { menuSignupLogin } = getSelectors(page);
-    const emailLoginInput = page.getByTestId('login-email');
-    const passwordLoginInput = page.getByTestId('login-password');
-    const loginBtn = page.getByTestId('login-button');
-    const menuLogout = page.locator('[href="/logout"]');
+    const { menuSignupLogin, emailLoginInput, passwordLoginInput, loginBtn, menuLogout } =
+      getSelectors(page);
 
     //-----ACTION-----
     await menuSignupLogin.click();
@@ -146,15 +95,19 @@ test.describe('Clothing webshop test automation', () => {
     await expect(emailLoginInput).toBeVisible();
   });
 
+  //FEATURE ===================== CONTACT US
+
   test('should successfully submit contact us form', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const menuContactUs = page.locator('[href="/contact_us"]');
-    const nameField = page.getByTestId('name');
-    const emailField = page.getByTestId('email');
-    const subjectField = page.getByTestId('subject');
-    const messageField = page.getByTestId('message');
-    const uploadFileBtn = page.locator('input[name="upload_file"]');
-    const submitBtn = page.getByTestId('submit-button');
+    const {
+      menuContactUs,
+      nameField,
+      emailField,
+      subjectField,
+      messageField,
+      uploadFileBtn,
+      submitBtn,
+    } = getSelectors(page);
 
     //-----ACTION-----
     await menuContactUs.click();
@@ -177,31 +130,210 @@ test.describe('Clothing webshop test automation', () => {
     await submitBtn.click();
 
     //----VALIDATION----
-    await expect(page.locator('.status.alert.alert-success')).toContainText(
-      'submitted successfully'
-    );
+    const successMessage = page
+      .locator('.status.alert.alert-success')
+      .filter({ hasText: 'submitted successfully' });
+
+    await expect(successMessage).toBeVisible();
   });
+
+  //FEATURE ===================== PRODUCTS PAGE
 
   test('product details should be visible', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const { menuProducts } = getSelectors(page);
-    const firstViewProductBtn = page.locator('[href="/product_details/1"]');
-    const productDetailsElements = [
-      { name: 'productName', locator: page.locator('.google-anno-t') },
-      { name: 'category', locator: page.locator('p', { hasText: 'Category' }) },
-      { name: 'Price', locator: page.locator('span span').first() },
-      { name: 'Availability', locator: page.locator('p', { hasText: 'Availability:' }) },
-      { name: 'Condition', locator: page.locator('p', { hasText: 'Condition:' }) },
-      { name: 'Brand', locator: page.locator('p', { hasText: 'Brand:' }) },
-    ];
+    const { menuProducts, firstViewProductBtn } = getSelectors(page);
+    const productDetails = getProductDetailsElements(page);
 
     //-----ACTION-----
     await menuProducts.click();
     await firstViewProductBtn.click();
 
     //----VALIDATION----
-    for (const { name, locator } of productDetailsElements) {
-      await expect(locator, `${name} should be visible`).toBeVisible();
+    await expect(productDetails.productName).toBeVisible();
+    await expect(productDetails.category).toContainText('Category');
+    await expect(productDetails.price).toHaveText(/Rs\.\s*\d+/);
+    await expect(productDetails.availability).toContainText('Availability:');
+    await expect(productDetails.condition).toContainText('Condition:');
+    await expect(productDetails.brand).toContainText('Brand:');
+  });
+
+  test('should able to search product', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const { menuProducts, productTiles, searchInput, searchBtn } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await searchInput.fill('unicorn patch gown');
+    await searchBtn.click();
+
+    //----VALIDATION----
+    await expect(productTiles).toContainText('Unicorn Patch Gown');
+  });
+
+  //FEATURE ===================== SUBSCRIPTION
+
+  test('should display confirmation after successful subscription registration', async ({
+    page,
+  }) => {
+    //-----ELEMENT SELECTOR-----
+    const { subscriptionContainer, subscriptionInput, subscribeBtn, subscribeConfirmation } =
+      getSelectors(page);
+
+    //-----ACTION-----
+    await subscriptionContainer.scrollIntoViewIfNeeded();
+    await subscriptionInput.fill('dummy@email.com');
+    await subscribeBtn.click();
+
+    //----VALIDATION----
+    await expect(subscribeConfirmation).toBeVisible();
+  });
+
+  test('should display confirmation after successful subscription registration in cart page', async ({
+    page,
+  }) => {
+    //-----ELEMENT SELECTOR-----
+    const {
+      menuCart,
+      subscriptionContainer,
+      subscriptionInput,
+      subscribeBtn,
+      subscribeConfirmation,
+    } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuCart.click();
+    await subscriptionContainer.scrollIntoViewIfNeeded();
+    await subscriptionInput.fill('cartpage@email.com');
+    await subscribeBtn.click();
+
+    //----VALIDATION----
+    await expect(subscribeConfirmation).toBeVisible();
+  });
+
+  //FEATURE ===================== CART PAGE
+  test('product should successfully be added in cart', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const {
+      menuProducts,
+      firstViewProductBtn,
+      firstAddToCartBtn,
+      continueShoppingBtn,
+      secondViewProductBtn,
+      secondAddToCartBtn,
+      viewCartBtn,
+    } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.hover();
+    await firstAddToCartBtn.click();
+    await continueShoppingBtn.click();
+    await secondViewProductBtn.hover();
+    await secondAddToCartBtn.click();
+    await viewCartBtn.click();
+
+    //----VALIDATION----
+    //Products are visible in the cart page
+    const productCount = 2;
+    for (let i = 1; i <= productCount; i++) {
+      const productSelector = `#product-${i}`;
+      await expect(page.locator(productSelector)).toBeVisible();
     }
+
+    // Verify their prices, quantity and total price dynamically
+    const rows = page.locator('table.cart tbody tr');
+    const rowCount = await rows.count();
+
+    for (let i = 0; i < rowCount; i++) {
+      const row = rows.nth(i);
+
+      const priceText = await row.locator('.cart_price p').innerText();
+      const quantityText = await row.locator('.cart_quantity button').innerText();
+      const totalText = await row.locator('.cart_total_price').innerText();
+
+      const price = parseInt(priceText.replace(/[^0-9]/g, ''), 10);
+      const quantity = parseInt(quantityText, 10);
+      const total = parseInt(totalText.replace(/[^0-9]/g, ''), 10);
+
+      console.log(`Row ${i + 1} → price: ${price}, qty: ${quantity}, total: ${total}`);
+
+      expect(total).toBe(price * quantity);
+    }
+  });
+
+  test('product quantity should correctly displayed in cart', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const {
+      menuProducts,
+      firstViewProductBtn,
+      prdDetailsQuantityInput,
+      prdDetailsAddToCartBtn,
+      viewCartBtn,
+      quantityCartValue,
+    } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.click();
+    await prdDetailsQuantityInput.fill('4');
+    await prdDetailsAddToCartBtn.click();
+    await viewCartBtn.click();
+
+    //----VALIDATION----
+    await expect(quantityCartValue).toHaveText('4');
+  });
+
+  //FEATURE ===================== PLACE ORDER
+  test('place order: register while checkout', async ({ page }) => {
+    //-----ELEMENT SELECTOR-----
+    const {
+      menuProducts,
+      menuCart,
+      menuDeleteAccount,
+      orderPlacedText,
+      accDeletedText,
+      firstViewProductBtn,
+      firstAddToCartBtn,
+      viewCartBtn,
+      proceedToCheckoutBtn,
+      registerLoginModalLink,
+      continueBtn,
+      checkoutInfo,
+      orderCommentInput,
+      placeOrderBtn,
+    } = getSelectors(page);
+
+    //-----ACTION-----
+    await menuProducts.click();
+    await firstViewProductBtn.hover();
+    await firstAddToCartBtn.click();
+    await viewCartBtn.click();
+    await proceedToCheckoutBtn.click();
+    await registerLoginModalLink.click();
+    const { username, email } = await registerUser(page);
+
+    console.log(`✅ User created: ${username} (${email})`);
+    await continueBtn.click();
+
+    //Verify logged in as the correct user
+    const loggedInUser = page.locator('li:has(i.fa-user)');
+    await expect(loggedInUser).toContainText(`Logged in as ${username}`);
+
+    await menuCart.click();
+    await proceedToCheckoutBtn.click();
+    await expect(checkoutInfo).toBeVisible();
+    await orderCommentInput.fill('Lorem ipsum');
+    await placeOrderBtn.click();
+
+    //Enter payment details
+    await enterPaymentDetails(page);
+    await expect(orderPlacedText).toBeVisible();
+
+    //Delete account
+    await menuDeleteAccount.click();
+
+    //----VALIDATION----
+    await expect(accDeletedText).toBeVisible();
+    await continueBtn.click();
   });
 });
