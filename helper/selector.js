@@ -94,13 +94,14 @@ export function getSelectors(page) {
   };
 }
 
+//TODO: FIX THE LOCATORS
 export function getProductDetailsElements(page) {
   return {
-    productName: page.locator('.google-anno-t'),
-    category: page.locator('p', { hasText: 'Category' }),
-    price: page.locator('span span').first(),
-    availability: page.locator('p', { hasText: 'Availability:' }),
-    condition: page.locator('p', { hasText: 'Condition:' }),
-    brand: page.locator('p', { hasText: 'Brand:' }),
+    productName: page.locator('.product-information h2'),
+    category: page.locator('.product-information p', { hasText: 'Category:' }),
+    price: page.locator('.product-information span span').first(),
+    availability: page.locator('.product-information p', { hasText: 'Availability:' }),
+    condition: page.locator('.product-information p', { hasText: 'Condition:' }),
+    brand: page.locator('.product-information p', { hasText: 'Brand:' }),
   };
 }

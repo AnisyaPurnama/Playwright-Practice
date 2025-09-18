@@ -130,14 +130,16 @@ test.describe('Clothing webshop test automation', () => {
     await submitBtn.click();
 
     //----VALIDATION----
-    await expect(page.locator('.status.alert.alert-success')).toContainText(
-      'submitted successfully'
-    );
+    const successMessage = page
+      .locator('.status.alert.alert-success')
+      .filter({ hasText: 'submitted successfully' });
+
+    await expect(successMessage).toBeVisible();
   });
 
   //FEATURE ===================== PRODUCTS PAGE
 
-  test('product details should be visible', async ({ page }) => {
+  test.only('product details should be visible', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuProducts, firstViewProductBtn } = getSelectors(page);
     const productDetails = getProductDetailsElements(page);
@@ -147,9 +149,12 @@ test.describe('Clothing webshop test automation', () => {
     await firstViewProductBtn.click();
 
     //----VALIDATION----
-    for (const { name, locator } of productDetails) {
-      await expect(locator, `${name} should be visible`).toBeVisible();
-    }
+    await expect(productDetails.productName).toBeVisible();
+    await expect(productDetails.category).toContainText('Category');
+    await expect(productDetails.price).toHaveText(/Rs\.\s*\d+/);
+    await expect(productDetails.availability).toContainText('Availability:');
+    await expect(productDetails.condition).toContainText('Condition:');
+    await expect(productDetails.brand).toContainText('Brand:');
   });
 
   test('should able to search product', async ({ page }) => {
