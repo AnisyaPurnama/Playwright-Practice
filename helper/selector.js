@@ -5,6 +5,7 @@ export function getSelectors(page) {
     menuSignupLogin: page.locator('[href="/login"]'),
     menuProducts: page.locator('[href="/products"]'),
     menuCart: page.getByRole('link', { name: 'Cart' }),
+    menuDeleteAccount: page.locator('[href="/delete_account"]'),
 
     // --- Signup form ---
     nameInputSignUp: page.getByTestId('signup-name'),

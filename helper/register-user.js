@@ -1,5 +1,5 @@
 // helpers/register-user.js
-import { getSelectors } from './selectors';
+import { getSelectors } from './selector';
 
 export async function registerUser(page) {
   const {

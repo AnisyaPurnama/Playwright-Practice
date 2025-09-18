@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSelectors } from '../../helpers/selectors';
-import { registerUser } from '../../helpers/register-user';
+import { getSelectors } from '../../helper/selector';
+import { registerUser } from '../../helper/register-user';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('https://www.automationexercise.com/');
@@ -294,28 +294,64 @@ test.describe('Clothing webshop test automation', () => {
   //FEATURE ===================== PLACE ORDER
   test('place order: register while checkout', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
-    const { menuProducts, menuSignupLogin } = getSelectors(page);
+    const { menuProducts, menuCart, menuDeleteAccount } = getSelectors(page);
     const firstViewProductBtn = page.locator('[href="/product_details/1"]');
     const firstAddToCartBtn = page.locator('a.add-to-cart[data-product-id="1"]').nth(0);
     const viewCartBtn = page.locator('.modal-body a[href="/view_cart"]');
-    const proceedToCheckoutBtn = page.locator('btn btn-default check_out');
+    const proceedToCheckoutBtn = page.locator('a.btn.btn-default.check_out');
+    const registerLoginModalLink = page.getByRole('link', { name: 'Register / Login' });
     //const accCreatedContinueBtn = page.locator('a.btn.btn-primary');
-    const accCreatedContinueBtn = page.getByTestId('continue-button');
+    const continueBtn = page.getByTestId('continue-button');
+    const checkoutInfo = page.getByTestId('checkout-info');
+    const orderCommentInput = page.locator('textarea.form-control');
+    const placeOrderBtn = page.locator('[href="/payment"]');
 
     //-----ACTION-----
     await menuProducts.click();
-    await firstViewProductBtn.click();
+    await firstViewProductBtn.hover();
     await firstAddToCartBtn.click();
     await viewCartBtn.click();
     await proceedToCheckoutBtn.click();
-    await menuSignupLogin.click();
+    await registerLoginModalLink.click();
     const { username, email } = await registerUser(page);
 
     console.log(`✅ User created: ${username} (${email})`);
-    await accCreatedContinueBtn.click();
+    await continueBtn.click();
 
-    //TODO: verify logged in as user xx
+    //verify logged in as the correct user
+    const loggedInUser = page.locator('li:has(i.fa-user)');
+    await expect(loggedInUser).toContainText(`Logged in as ${username}`);
+
+    await menuCart.click();
+    await proceedToCheckoutBtn.click();
+    await expect(checkoutInfo).toBeVisible();
+    await orderCommentInput.fill('Lorem ipsum');
+    await placeOrderBtn.click();
+
+    //Enter payment details
+    const cardNameInput = page.getByTestId('name-on-card');
+    const cardNumberInput = page.getByTestId('card-number');
+    const cvcInput = page.getByTestId('cvc');
+    const cardExpirationMonthInput = page.getByTestId('expiry-month');
+    const cardExpirationYearInput = page.getByTestId('expiry-year');
+    const payBtn = page.getByTestId('pay-button');
+    const orderPlacedText = page.getByTestId('order-placed');
+
+    await cardNameInput.fill('Lorem lorem');
+    await cardNumberInput.fill('1234567891011');
+    await cvcInput.fill('121');
+    await cardExpirationMonthInput.fill('02');
+    await cardExpirationYearInput.fill('2027');
+    await payBtn.click();
+    await expect(orderPlacedText).toBeVisible();
+
+    //Delete account
+    const accDeletedText = page.getByTestId('account-deleted');
+
+    await menuDeleteAccount.click();
 
     //----VALIDATION----
+    await expect(accDeletedText).toBeVisible();
+    await continueBtn.click();
   });
 });
