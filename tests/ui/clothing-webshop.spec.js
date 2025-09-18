@@ -139,7 +139,7 @@ test.describe('Clothing webshop test automation', () => {
 
   //FEATURE ===================== PRODUCTS PAGE
 
-  test.only('product details should be visible', async ({ page }) => {
+  test('product details should be visible', async ({ page }) => {
     //-----ELEMENT SELECTOR-----
     const { menuProducts, firstViewProductBtn } = getSelectors(page);
     const productDetails = getProductDetailsElements(page);
